@@ -1,0 +1,104 @@
+参考：https://qiita.com/ucan-lab/items/56c9dc3cf2e6762672f4
+
+--ログイン画面作成
+$ php artisan key:generate
+$ composer require laravel/ui
+$ php artisan ui bootstrap --auth
+
+ 
+#◆◆イメージ一覧◆◆
+docker images
+#◆◆停止しているコンテナの確認◆◆
+docker ps -a
+#◆停止
+docker stop docker-laravel-handson_web_1
+docker stop docker-laravel-handson_app_1
+docker stop docker-laravel-handson_db_1
+#◆起動
+docker start docker-laravel-handson_web_1
+docker start docker-laravel-handson_app_1
+docker start docker-laravel-handson_db_1
+#◆コンテナ一覧表示
+docker-compose ps   
+#◆コンテナに入る
+docker compose exec app bash
+docker compose exec db bash
+docker compose exec web sh
+
+
+①まずはbuild
+docker compose up -d --build
+②APサーバへログイン
+docker compose exec app bash
+③composerをインストールと環境を整えてマイグレーション作業
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan storage:link
+chmod -R 777 storage bootstrap/cache
+--追加でxdebugをインストールして有効化する
+pecl install xdebug && docker-php-ext-enable xdebug
+--php.iniに下記を追加
+[xdebug]
+xdebug.client_host=host.docker.internal
+xdebug.client_port=9003
+xdebug.start_with_request=yes
+xdebug.mode=debug
+
+④モデルとコントローラを用意
+cd /work
+php artisan make:model Article -m -c -r
+⑤Contentカラム追加
+vi database/migrations/2018_xx_xx_xxxxxxxx_create_articles_table.php
+⑥マイグレーション実行
+php artisan migrate
+⑦ルーティング
+vi /work/routes/web.php
+//コントローラーの場所を記述
+use App\Http\Controllers\ArticleController;
+
+Route::get('/articles', 'ArticleController@index')->name('article.list');
+Route::get('/article/{id}', 'ArticleController@show')->name('article.show');
+⑧https対応
+vi /work/app/Providers/AppServiceProvider.php
+    public function boot()
+    {
+        \URL::forceScheme('https');
+    }
+
+⑨コントローラー作成
+vi /work/app/Http/Controllers/ArticleController.php
+    public function index()
+    {
+        $message = 'Welcome my BBS';
+        return view('index', ['message' => $message]);
+    }
+⑩ビュー作成
+/bbs/resources/views/index.blade.php
+
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset='utf-8'>
+        <title>paiza bbs</title>
+        <style>body {padding: 10px;}</style>
+    </head>
+    <body>
+        <h1>paiza bbs</h1>
+        <p>{{ $message }}</p>
+    </body>
+</html>
+
+
+#◆BBSプロジェクト作成のためにコンテナに入る
+docker compose exec app bash
+#◆VIMのインストール
+apt-get update
+apt-get install vim
+#◆プロジェクト作成
+cd /
+composer create-project laravel/laravel laravelapp --prefer-dist
+#◆.env設定
+cd laravelapp
+cp -p .env .env20210911
+
